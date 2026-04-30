@@ -5086,7 +5086,7 @@ window._notifySignalStatus = function(sig, status) {
 })();
 </script>
 
-/* __bug_report_discord_v1__ */
+/* __bug_report_discord_v1__ */ /* __bug_report_worker_relay_v1__ */
 <script>
 (function(){
   // After Firebase write succeeds, fire a sanitized summary to a Discord
@@ -5097,13 +5097,7 @@ window._notifySignalStatus = function(sig, status) {
   function truncate(s, n){ if (!s) return ''; s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 
   async function pingDiscord(report){
-    var url = '';
-    try { url = (localStorage.getItem('bugReportWebhook') || '').trim(); } catch(_){}
-    if (!url) return;
-    if (!/^https:\/\/discord(app)?\.com\/api\/webhooks\//.test(url)) {
-      console.warn('[bugReport] webhook URL does not look like a Discord webhook; skipping');
-      return;
-    }
+    var WORKER_URL = 'https://market-elites-gate.beau-e51.workers.dev/bug-report';
     try {
       var ctx = report.context || {};
       var ident = ctx.identity || {};
@@ -5114,16 +5108,14 @@ window._notifySignalStatus = function(sig, status) {
       var reporter = ident.email || ('uid ' + shortUid(ident.uid));
       var consoleErrCount = (bufs.console || []).filter(function(c){ return c.kind === 'console.error' || c.kind === 'window.error' || c.kind === 'unhandledrejection'; }).length;
       var failedNet = (bufs.network || []).length;
-
       var fields = [
         { name: 'Reporter', value: reporter, inline: true },
-        { name: 'Report ID', value: '`' + (report.id || '').slice(0, 14) + '`', inline: true },
-        { name: 'Page', value: '`' + truncate(page.url || '(unknown)', 120) + '`' + (page.activeTab ? ' · tab: ' + page.activeTab : ''), inline: false },
+        { name: 'Report ID', value: '\`' + (report.id || '').slice(0, 14) + '\`', inline: true },
+        { name: 'Page', value: '\`' + truncate(page.url || '(unknown)', 120) + '\`' + (page.activeTab ? ' · tab: ' + page.activeTab : ''), inline: false },
         { name: 'Counts', value: 'positions: ' + (counts.positions||0) + ' · history: ' + (counts.history||0) + ' · wheels: ' + (counts.wheels||0) + ' (' + (counts.cycles||0) + ' cycles)', inline: false },
         { name: 'Env', value: truncate((env.userAgent || '').replace(/Mozilla\/[^ ]+ /, ''), 90) + '\n' + (env.viewport || '') + ' · ' + (env.timezone || '') + (env.online ? '' : ' · offline'), inline: false },
         { name: 'Captured signals', value: consoleErrCount + ' console errors · ' + failedNet + ' failed requests', inline: false },
       ];
-
       var embed = {
         title: '🐛 ' + truncate(report.title || '(untitled)', 200),
         description: truncate(report.description || '', 600),
@@ -5132,19 +5124,17 @@ window._notifySignalStatus = function(sig, status) {
         footer: { text: 'Market Elites Desktop · Bug Reporter' },
         timestamp: new Date(report.createdAt || Date.now()).toISOString(),
       };
-
-      // Fire-and-forget; don't block on response.
-      fetch(url, {
+      // Fire-and-forget through the worker relay. Worker validates origin,
+      // enforces size limits, and forwards to Discord with the secret URL.
+      fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: 'ME Bug Reporter',
-          embeds: [embed],
-        }),
+        body: JSON.stringify({ embed: embed }),
       }).then(function(r){
-        if (!r.ok) console.warn('[bugReport] Discord webhook returned', r.status);
+        if (!r.ok) console.warn('[bugReport] worker relay returned', r.status);
+        else console.log('[bugReport] Discord ping sent via worker');
       }).catch(function(err){
-        console.warn('[bugReport] Discord webhook failed:', err && err.message);
+        console.warn('[bugReport] worker relay failed:', err && err.message);
       });
     } catch (err) {
       console.warn('[bugReport] Discord ping crashed:', err && err.message);
