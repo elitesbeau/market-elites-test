@@ -1028,7 +1028,7 @@ window.onerror=function(msg,src,line,col,err){
   </nav>
   <div class="sb-div" style="margin-top:16px"></div>
   <div class="sb-footer">
-    <a href="javascript:void(0)" onclick="window._brOpen()" id="brSidebarLink" style="display:block;font-family:var(--fm);font-size:9px;color:var(--t5);letter-spacing:1.5px;text-decoration:none;margin-bottom:10px;opacity:0.55;transition:opacity .2s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.55" title="Report a bug (Ctrl+Shift+B)">↳ REPORT AN ISSUE</a>
+    <a href="javascript:void(0)" onclick="window._brOpen()" id="brSidebarLink" style="display:inline-block;font-family:var(--fm);font-size:9px;color:var(--ac);letter-spacing:1.5px;text-decoration:none;margin-bottom:12px;padding:5px 10px;border:1px solid rgba(201,169,124,0.4);border-radius:4px;background:rgba(201,169,124,0.04);opacity:0.95;transition:all .2s" onmouseover="this.style.background='rgba(201,169,124,0.14)';this.style.borderColor='var(--ac)'" onmouseout="this.style.background='rgba(201,169,124,0.04)';this.style.borderColor='rgba(201,169,124,0.4)'" title="Report a bug (Ctrl+Shift+B)">↳ REPORT AN ISSUE</a>
     <div class="sb-status"><div class="status-dot"></div>NYSE OPEN</div>
     <div class="sb-meta">ME — SYS.07<br>2026.03.03 · EST</div>
   </div>
@@ -3245,17 +3245,14 @@ window._loadDemoData=function(d){if(d&&typeof d==="object"){Object.assign(t,d)}}
     {tab:'calculator',title:'Run the numbers',body:'Type a ticker, browse live option chains, and see exactly how much premium you\u2019ll collect before you place a trade. Add to portfolio in one click.'},
     {tab:'wheels',title:'Your wheel lifecycle',body:'Every wheel lives here: CSP \u2192 Assigned \u2192 Sell CC \u2192 Called Away. Watch each cycle play out with full math \u2014 premium kept, days held, total P&L.'},
     {tab:'profile',title:'Set your monthly goal',body:'Pick a monthly income target and we\u2019ll track your progress. You can also turn on alerts, update your info, and see your lifetime win rate.'},
-    {finish:true,title:'You\u2019re ready',body:'Press <b>1\u20139</b> to jump between tabs fast. Now go make some premium.'}
+    {selector:'#brSidebarLink',title:'Found a bug? Tell us',body:'See something wrong or have feedback? Hit <b>Report an Issue</b> at the bottom of the sidebar (or press <b>Ctrl+Shift+B</b>). Your reports go straight to the dev team \u2014 the more detail, the faster we fix it.'},{finish:true,title:'You\u2019re ready',body:'Press <b>1\u20139</b> to jump between tabs fast. Now go make some premium.'}
   ];
   var cur=0,overlay=null,spotlight=null,card=null;
   function isAuthed(){try{var s=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');return !!(s.firebaseUid||s.isGuest||s.user&&s.user.email)}catch(e){return false}}
   function isNewUser(){try{var s=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');return (!(s.history&&s.history.length)&&!(s.positions&&s.positions.length)&&!(s.wheelPositions&&s.wheelPositions.length))}catch(e){return true}}
   function hasDone(){return localStorage.getItem(DONE_KEY)==='true'}
   function markDone(){try{localStorage.setItem(DONE_KEY,'true')}catch(e){}}
-  function getTarget(step){
-    if(step.tab)return document.querySelector('.nav-item[data-tab="'+step.tab+'"]');
-    return null;
-  }
+  function getTarget(step){if(step.tab)return document.querySelector('.nav-item[data-tab="'+step.tab+'"]');if(step.selector)return document.querySelector(step.selector);return null;}
   function positionCard(target){
     if(!card)return;
     if(!target){card.style.left='50%';card.style.top='50%';card.style.transform='translate(-50%,-50%)';return}
@@ -4262,7 +4259,7 @@ window._notifySignalStatus = function(sig, status) {
 <div class="br-modal-bg" id="brModal" role="dialog" aria-labelledby="brModalTitle" aria-modal="true">
   <div class="br-modal">
     <div class="br-head">
-      <span class="br-title" id="brModalTitle">REPORT AN ISSUE</span>
+      <span class="br-title" id="brModalTitle">REPORT AN ISSUE</span><!--/* __bug_reporter_v1_tweaks__ */-->
       <button class="br-close" onclick="window._brClose()" aria-label="Close">×</button>
     </div>
     <div class="br-body">
@@ -4283,7 +4280,7 @@ window._notifySignalStatus = function(sig, status) {
           <li>Counts of your stored items (positions, trades, wheels) — never their values</li>
           <li>Your account UID and email, for triage</li>
         </ul>
-        <strong>What we do not collect:</strong> form values, trade prices, API keys, passwords, the contents of your localStorage or any private data you've entered. Reports are stored privately under your account in our database, used only by the development team to diagnose and fix bugs, and never shared. To request deletion, reply with your report ID to <a href="mailto:beau@bdge.co" style="color:#C9A97C">beau@bdge.co</a>.
+        <strong>What we do not collect:</strong> form values, trade prices, API keys, passwords, the contents of your localStorage or any private data you've entered. Reports are stored privately under your account in our database, used only by the development team to diagnose and fix bugs, and never shared. To request deletion, reply with your report ID to <a href="mailto:beau@marketelites.io" style="color:#C9A97C">beau@marketelites.io</a>.
       </div>
       <div class="br-consent">
         <input type="checkbox" id="brConsent">
