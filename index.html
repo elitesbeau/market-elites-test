@@ -4635,5 +4635,127 @@ window._notifySignalStatus = function(sig, status) {
   });
 })();
 </script>
+
+/* __bug_reporter_announce_v1__ */
+<style>
+  .bra-pop{position:fixed;z-index:9997;background:#0d0d0d;border:1px solid #C9A97C;border-radius:10px;padding:14px 16px;width:280px;box-shadow:0 12px 36px rgba(0,0,0,0.6);font-family:'Inter',sans-serif;color:#E8E0D0;opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s}
+  .bra-pop.show{opacity:1;transform:translateY(0)}
+  .bra-pop::before{content:'';position:absolute;left:-7px;top:24px;width:12px;height:12px;background:#0d0d0d;border-left:1px solid #C9A97C;border-bottom:1px solid #C9A97C;transform:rotate(45deg)}
+  .bra-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:#C9A97C;margin-bottom:6px}
+  .bra-title{font-size:14px;font-weight:600;margin-bottom:6px;color:#E8E0D0}
+  .bra-body{font-size:12px;line-height:1.5;color:rgba(232,224,208,0.75);margin-bottom:12px}
+  .bra-body kbd{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(232,224,208,0.08);border:1px solid rgba(201,169,124,0.3);border-radius:3px;padding:1px 5px;color:#C9A97C}
+  .bra-actions{display:flex;justify-content:flex-end;gap:8px}
+  .bra-btn{padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;border:none;border-radius:5px;cursor:pointer;text-transform:uppercase}
+  .bra-btn-ok{background:linear-gradient(135deg,#C9A97C,#a08a5e);color:#050505;font-weight:600}
+  .bra-close{position:absolute;top:6px;right:8px;background:none;border:none;color:rgba(232,224,208,0.5);font-size:16px;line-height:1;cursor:pointer;padding:4px}
+  .bra-close:hover{color:#E8E0D0}
+  .bra-glow{position:absolute;border-radius:6px;pointer-events:none;z-index:9996;box-shadow:0 0 0 2px rgba(201,169,124,0.7),0 0 20px rgba(201,169,124,0.4);transition:opacity .25s;opacity:0}
+  .bra-glow.show{opacity:1;animation:braPulse 1.6s ease-in-out infinite}
+  @keyframes braPulse{0%,100%{box-shadow:0 0 0 2px rgba(201,169,124,0.7),0 0 20px rgba(201,169,124,0.4)}50%{box-shadow:0 0 0 3px rgba(201,169,124,0.95),0 0 30px rgba(201,169,124,0.7)}}
+</style>
+
+<script>
+(function(){
+  var ANNOUNCE_KEY = 'meBugReporterAnnounced';
+  var ONBOARD_KEY  = 'meOnboardDone';
+
+  function shouldShow(){
+    try {
+      if (localStorage.getItem(ANNOUNCE_KEY) === 'true') return false;
+      // Only existing users (have completed onboarding) see this popover.
+      // New users get the announcement via the regular tour step.
+      if (localStorage.getItem(ONBOARD_KEY) !== 'true') return false;
+      return true;
+    } catch(_){ return false; }
+  }
+  function markShown(){
+    try { localStorage.setItem(ANNOUNCE_KEY, 'true'); } catch(_){}
+  }
+
+  function buildPopover(target){
+    var pop = document.createElement('div');
+    pop.className = 'bra-pop';
+    pop.innerHTML =
+      '<button class="bra-close" aria-label="Dismiss">×</button>' +
+      '<div class="bra-tag">NEW</div>' +
+      '<div class="bra-title">Spot a bug? Let us know.</div>' +
+      '<div class="bra-body">Click <b>↳ Report an Issue</b> at the bottom of the sidebar — or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> from anywhere. Your reports go straight to the dev team.</div>' +
+      '<div class="bra-actions"><button class="bra-btn bra-btn-ok">Got it</button></div>';
+
+    var glow = document.createElement('div');
+    glow.className = 'bra-glow';
+
+    document.body.appendChild(glow);
+    document.body.appendChild(pop);
+
+    function position(){
+      try {
+        var r = target.getBoundingClientRect();
+        // Glow ring around target.
+        glow.style.left = (r.left - 4) + 'px';
+        glow.style.top  = (r.top  - 4) + 'px';
+        glow.style.width  = (r.width  + 8) + 'px';
+        glow.style.height = (r.height + 8) + 'px';
+        // Popover to the right of the target, vertically aligned.
+        var popLeft = r.right + 14;
+        var popTop  = Math.max(20, r.top - 10);
+        // If popover would clip the right edge, place to left instead.
+        if (popLeft + 280 > window.innerWidth) {
+          popLeft = Math.max(20, r.left - 280 - 14);
+          // Flip the arrow.
+          pop.style.setProperty('--arrow-flip', '1');
+        }
+        pop.style.left = popLeft + 'px';
+        pop.style.top  = popTop + 'px';
+      } catch(_){}
+    }
+
+    function show(){
+      position();
+      requestAnimationFrame(function(){
+        pop.classList.add('show');
+        glow.classList.add('show');
+      });
+    }
+    function dismiss(){
+      pop.classList.remove('show');
+      glow.classList.remove('show');
+      setTimeout(function(){
+        if (pop.parentNode)  pop.parentNode.removeChild(pop);
+        if (glow.parentNode) glow.parentNode.removeChild(glow);
+      }, 250);
+      markShown();
+    }
+
+    pop.querySelector('.bra-close').addEventListener('click', dismiss);
+    pop.querySelector('.bra-btn-ok').addEventListener('click', dismiss);
+    // Click on the target itself counts as acknowledged.
+    target.addEventListener('click', dismiss, { once: true });
+    // Reposition on resize / scroll while visible.
+    window.addEventListener('resize', position);
+
+    show();
+  }
+
+  function tryShow(){
+    if (!shouldShow()) return;
+    var target = document.getElementById('brSidebarLink');
+    if (!target) return;
+    // Only show once the report link is actually on screen + sidebar visible.
+    var sb = document.querySelector('.sidebar');
+    if (sb && sb.style.display === 'none') return;
+    buildPopover(target);
+  }
+
+  // Wait a beat after page load so the rest of the UI settles + auth resolves.
+  function init(){ setTimeout(tryShow, 3000); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
 </body>
 </html>
