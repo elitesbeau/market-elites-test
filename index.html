@@ -4228,5 +4228,233 @@ window._notifySignalStatus = function(sig, status) {
   };
 })();
 </script>
+
+/* __bug_reporter_v0__ */
+<style>
+  #bugReportFab{position:fixed;bottom:20px;right:20px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#7c2d12,#b91c1c);color:#fff;border:none;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(185,28,28,0.4);z-index:9998;transition:transform .2s,box-shadow .2s}
+  #bugReportFab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(185,28,28,0.6)}
+  #bugReportFab:active{transform:scale(0.95)}
+  .br-modal-bg{position:fixed;inset:0;background:rgba(5,5,5,0.85);backdrop-filter:blur(8px);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+  .br-modal-bg.open{display:flex}
+  .br-modal{background:#0d0d0d;border:1px solid #C9A97C;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;color:#E8E0D0;font-family:'Inter',sans-serif}
+  .br-head{padding:16px 20px;border-bottom:1px solid rgba(201,169,124,0.2);display:flex;align-items:center;justify-content:space-between}
+  .br-title{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:#C9A97C}
+  .br-close{background:none;border:none;color:#E8E0D0;font-size:24px;cursor:pointer;opacity:0.6}
+  .br-close:hover{opacity:1}
+  .br-body{padding:20px}
+  .br-field{margin-bottom:14px}
+  .br-label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;color:rgba(232,224,208,0.5);margin-bottom:6px;text-transform:uppercase}
+  .br-input,.br-textarea,.br-select{width:100%;background:rgba(232,224,208,0.04);border:1px solid rgba(201,169,124,0.25);border-radius:6px;padding:10px 12px;color:#E8E0D0;font-family:'Inter',sans-serif;font-size:13px;outline:none;box-sizing:border-box}
+  .br-textarea{min-height:100px;resize:vertical;font-family:'Inter',sans-serif}
+  .br-input:focus,.br-textarea:focus,.br-select:focus{border-color:#C9A97C}
+  .br-context{background:rgba(232,224,208,0.03);border:1px solid rgba(232,224,208,0.08);border-radius:6px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(232,224,208,0.55);max-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+  .br-foot{padding:14px 20px;border-top:1px solid rgba(201,169,124,0.2);display:flex;gap:10px;justify-content:flex-end}
+  .br-btn{padding:8px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;font-weight:600}
+  .br-btn-cancel{background:transparent;border:1px solid rgba(232,224,208,0.2);color:#E8E0D0}
+  .br-btn-submit{background:linear-gradient(135deg,#C9A97C,#a08a5e);border:none;color:#050505}
+  .br-btn-submit:disabled{opacity:0.4;cursor:not-allowed}
+</style>
+
+<button id="bugReportFab" title="Report a bug" onclick="window._brOpen()">🐛</button>
+
+<div class="br-modal-bg" id="brModal">
+  <div class="br-modal">
+    <div class="br-head">
+      <span class="br-title">REPORT A BUG</span>
+      <button class="br-close" onclick="window._brClose()">×</button>
+    </div>
+    <div class="br-body">
+      <div class="br-field">
+        <label class="br-label">Title (one line)</label>
+        <input class="br-input" id="brTitle" placeholder="e.g. Trade history shows wrong total" maxlength="120">
+      </div>
+      <div class="br-field">
+        <label class="br-label">What happened? What did you expect?</label>
+        <textarea class="br-textarea" id="brDesc" placeholder="Steps to reproduce, what you saw, what you expected. The more detail the better."></textarea>
+      </div>
+      <div class="br-field">
+        <label class="br-label">Severity</label>
+        <select class="br-select" id="brSev">
+          <option value="low">Low — cosmetic / minor annoyance</option>
+          <option value="medium" selected>Medium — feature broken, workaround exists</option>
+          <option value="high">High — feature unusable / data wrong</option>
+          <option value="critical">Critical — data loss / can't use the app</option>
+        </select>
+      </div>
+      <div class="br-field">
+        <label class="br-label">Auto-captured context (sent with your report)</label>
+        <pre class="br-context" id="brContext">collecting…</pre>
+      </div>
+      <div id="brStatus" style="font-size:11px;color:rgba(232,224,208,0.5);margin-top:8px"></div>
+    </div>
+    <div class="br-foot">
+      <button class="br-btn br-btn-cancel" onclick="window._brClose()">Cancel</button>
+      <button class="br-btn br-btn-submit" id="brSubmit" onclick="window._brSubmit()">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Ring buffers — start capturing as soon as this script runs.
+  var consoleBuf = [];
+  var actionBuf = [];
+  var MAX = 20;
+  function pushBuf(buf, item){ buf.push(item); while (buf.length > MAX) buf.shift(); }
+
+  // Capture console.error and uncaught errors.
+  try {
+    var origErr = console.error;
+    console.error = function(){
+      try { pushBuf(consoleBuf, { t: Date.now(), kind: 'console.error', msg: Array.prototype.slice.call(arguments).map(String).join(' ').slice(0, 500) }); } catch(_){}
+      return origErr.apply(this, arguments);
+    };
+    window.addEventListener('error', function(e){
+      try { pushBuf(consoleBuf, { t: Date.now(), kind: 'window.error', msg: (e.message||'') + ' @ ' + (e.filename||'') + ':' + (e.lineno||0) }); } catch(_){}
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      try { pushBuf(consoleBuf, { t: Date.now(), kind: 'unhandledrejection', msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 500) }); } catch(_){}
+    });
+  } catch(_){}
+
+  // Capture user actions: clicks on buttons, tab switches.
+  try {
+    document.addEventListener('click', function(e){
+      try {
+        var t = e.target;
+        if (!t) return;
+        var label = '';
+        if (t.tagName === 'BUTTON' || (t.closest && t.closest('button'))) {
+          var b = t.tagName === 'BUTTON' ? t : t.closest('button');
+          label = 'click button: ' + (b.id || b.textContent || '').trim().slice(0, 60);
+        } else if (t.classList && t.classList.contains('nav-item')) {
+          label = 'tab: ' + (t.dataset.tab || '');
+        }
+        if (label) pushBuf(actionBuf, { t: Date.now(), kind: 'action', msg: label });
+      } catch(_){}
+    }, true);
+  } catch(_){}
+
+  function lsSize(){
+    try {
+      var total = 0;
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        var v = localStorage.getItem(k) || '';
+        total += k.length + v.length;
+      }
+      return total;
+    } catch(e){ return -1; }
+  }
+
+  function buildContext(){
+    var uid = null, email = null;
+    try {
+      if (window.firebase && firebase.auth) {
+        var u = firebase.auth().currentUser;
+        if (u) { uid = u.uid; email = u.email; }
+      }
+    } catch(_){}
+    var ctx = {
+      version: 'test-site/v0',
+      submittedAt: new Date().toISOString(),
+      url: location.href,
+      pathHash: location.hash || '',
+      userAgent: navigator.userAgent,
+      viewport: window.innerWidth + 'x' + window.innerHeight,
+      language: navigator.language || '',
+      uid: uid,
+      email: email,
+      localStorageBytes: lsSize(),
+      consoleBuf: consoleBuf.slice(),
+      actionBuf: actionBuf.slice(),
+    };
+    return ctx;
+  }
+
+  function fmtContext(ctx){
+    var copy = Object.assign({}, ctx);
+    // Truncate verbose buffers for display (full data still submitted).
+    copy.consoleBuf = '(' + ctx.consoleBuf.length + ' entries)';
+    copy.actionBuf = '(' + ctx.actionBuf.length + ' entries)';
+    return JSON.stringify(copy, null, 2);
+  }
+
+  window._brOpen = function(){
+    var modal = document.getElementById('brModal');
+    if (!modal) return;
+    modal.classList.add('open');
+    document.getElementById('brTitle').value = '';
+    document.getElementById('brDesc').value = '';
+    document.getElementById('brSev').value = 'medium';
+    document.getElementById('brStatus').textContent = '';
+    var ctx = buildContext();
+    document.getElementById('brContext').textContent = fmtContext(ctx);
+    document.getElementById('brSubmit').disabled = false;
+    setTimeout(function(){ document.getElementById('brTitle').focus(); }, 100);
+  };
+
+  window._brClose = function(){
+    var modal = document.getElementById('brModal');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window._brSubmit = async function(){
+    var title = (document.getElementById('brTitle').value || '').trim();
+    var desc  = (document.getElementById('brDesc').value || '').trim();
+    var sev   = document.getElementById('brSev').value || 'medium';
+    var status = document.getElementById('brStatus');
+    var btn = document.getElementById('brSubmit');
+
+    if (!title) { status.textContent = 'Add a one-line title'; status.style.color = '#fca5a5'; return; }
+    if (!desc)  { status.textContent = 'Tell us what happened'; status.style.color = '#fca5a5'; return; }
+
+    btn.disabled = true;
+    status.textContent = 'Submitting…';
+    status.style.color = 'rgba(232,224,208,0.5)';
+
+    var ctx = buildContext();
+    var report = {
+      title: title.slice(0, 200),
+      description: desc.slice(0, 4000),
+      severity: sev,
+      context: ctx,
+      createdAt: Date.now(),
+      status: 'open',
+    };
+
+    try {
+      if (!window.firebase || !firebase.database || !firebase.auth) {
+        throw new Error('Firebase not loaded — sign in first');
+      }
+      var u = firebase.auth().currentUser;
+      if (!u) throw new Error('Sign in to submit a bug report');
+      var ref = firebase.database().ref('users/' + u.uid + '/bugReports').push();
+      report.id = ref.key;
+      await ref.set(report);
+      status.textContent = 'Submitted — thank you! Report ID: ' + ref.key.slice(0, 8);
+      status.style.color = '#86efac';
+      setTimeout(function(){ window._brClose(); }, 1800);
+    } catch (err) {
+      console.error('[bugReport] submit failed:', err);
+      status.textContent = 'Failed: ' + ((err && err.message) || 'unknown error');
+      status.style.color = '#fca5a5';
+      btn.disabled = false;
+    }
+  };
+
+  // Close on backdrop click.
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'brModal') window._brClose();
+  });
+  // Close on Escape.
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('brModal');
+      if (modal && modal.classList.contains('open')) window._brClose();
+    }
+  });
+})();
+</script>
 </body>
 </html>
